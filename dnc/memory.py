@@ -236,17 +236,17 @@ class Memory(nn.Module):
     else:
       ξ = self.interface_weights(ξ)
       # r read keys (b * w * r)
-      read_keys = T.tanh(ξ[:, :r * w].contiguous().view(b, r, w))
+      read_keys = ξ[:, :r * w].contiguous().view(b, r, w)
       # r read strengths (b * r)
-      read_strengths = F.softplus(ξ[:, r * w:r * w + r].contiguous().view(b, r))
+      read_strengths = F.softplus(ξ[:, r * w:r * w + r].contiguous().view(b, r))+1
       # write key (b * w * 1)
-      write_key = T.tanh(ξ[:, r * w + r:r * w + r + w].contiguous().view(b, 1, w))
+      write_key = ξ[:, r * w + r:r * w + r + w].contiguous().view(b, 1, w)
       # write strength (b * 1)
-      write_strength = F.softplus(ξ[:, r * w + r + w].contiguous().view(b, 1))
+      write_strength = F.softplus(ξ[:, r * w + r + w].contiguous().view(b, 1))+1
       # erase vector (b * w)
       erase_vector = T.sigmoid(ξ[:, r * w + r + w + 1: r * w + r + 2 * w + 1].contiguous().view(b, 1, w))
       # write vector (b * w)
-      write_vector = T.tanh(ξ[:, r * w + r + 2 * w + 1: r * w + r + 3 * w + 1].contiguous().view(b, 1, w))
+      write_vector = ξ[:, r * w + r + 2 * w + 1: r * w + r + 3 * w + 1].contiguous().view(b, 1, w)
       # r free gates (b * r)
       free_gates = T.sigmoid(ξ[:, r * w + r + 3 * w + 1: r * w + 2 * r + 3 * w + 1].contiguous().view(b, r))
       # allocation gate (b * 1)
