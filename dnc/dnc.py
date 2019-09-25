@@ -13,6 +13,8 @@ from torch.nn.utils.rnn import PackedSequence
 from .util import *
 from .memory import *
 
+from .feedforward import *
+
 from torch.nn.init import orthogonal_, xavier_uniform_
 
 
@@ -80,9 +82,11 @@ class DNC(nn.Module):
       elif self.rnn_type.lower() == 'gru':
         self.rnns.append(nn.GRU((self.nn_input_size if layer == 0 else self.nn_output_size),
                                 self.output_size, bias=self.bias, batch_first=True, dropout=self.dropout, num_layers=self.num_hidden_layers))
-      if self.rnn_type.lower() == 'lstm':
+      elif self.rnn_type.lower() == 'lstm':
         self.rnns.append(nn.LSTM((self.nn_input_size if layer == 0 else self.nn_output_size),
                                  self.output_size, bias=self.bias, batch_first=True, dropout=self.dropout, num_layers=self.num_hidden_layers))
+      if self.rnn_type.lower() == "ffnn":
+        self.rnns.append(FFNN((self.nn_input_size if layer == 0 else self.nn_output_size), output_size=self.output_size, bias=self.bias, num_layers=self.num_hidden_layers))
       setattr(self, self.rnn_type.lower() + '_layer_' + str(layer), self.rnns[layer])
 
       # memories for each layer
@@ -313,6 +317,3 @@ class DNC(nn.Module):
     s += ")\n" + super(DNC, self).__repr__() + \
       "\n----------------------------------------\n"
     return s.format(name=self.__class__.__name__, **self.__dict__)
-
-
-
