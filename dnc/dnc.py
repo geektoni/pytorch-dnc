@@ -166,6 +166,10 @@ class DNC(nn.Module):
           'read_weights': [],
           'write_weights': [],
           'usage_vector': [],
+          'forward_mode': [],
+          'content_mode': [],
+          'backward_mode': [],
+          'read_modes': []
       }
 
     debug_obj['memory'].append(mhx['memory'][0].data.cpu().numpy())
@@ -174,6 +178,10 @@ class DNC(nn.Module):
     debug_obj['read_weights'].append(mhx['read_weights'][0].data.cpu().numpy())
     debug_obj['write_weights'].append(mhx['write_weights'][0].data.cpu().numpy())
     debug_obj['usage_vector'].append(mhx['usage_vector'][0].unsqueeze(0).data.cpu().numpy())
+    debug_obj['forward_mode'].append(mhx['forward_mode'][0].data.cpu().numpy())
+    debug_obj['content_mode'].append(mhx['content_mode'][0].data.cpu().numpy())
+    debug_obj['backward_mode'].append(mhx['backward_mode'][0].data.cpu().numpy())
+    debug_obj['read_modes'].append(mhx['read_modes'][0].data.cpu().numpy())
     return debug_obj
 
   def _layer_forward(self, input, layer, hx=(None, None), pass_through_memory=True):

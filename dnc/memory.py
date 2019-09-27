@@ -56,7 +56,10 @@ class Memory(nn.Module):
           'precedence': cuda(T.zeros(b, 1, m), gpu_id=self.gpu_id),
           'read_weights': cuda(T.zeros(b, r, m).fill_(0), gpu_id=self.gpu_id),
           'write_weights': cuda(T.zeros(b, 1, m).fill_(0), gpu_id=self.gpu_id),
-          'usage_vector': cuda(T.zeros(b, m), gpu_id=self.gpu_id)
+          'usage_vector': cuda(T.zeros(b, m), gpu_id=self.gpu_id),
+          'forward_mode': cuda(T.zeros(b, r, m).fill_(0), gpu_id=self.gpu_id),
+          'content_mode': cuda(T.zeros(b, r, m).fill_(0), gpu_id=self.gpu_id),
+          'read_modes': cuda(T.zeros(b, r, m).fill_(0), gpu_id=self.gpu_id)
       }
     else:
       hidden['memory'] = hidden['memory'].clone()
@@ -65,12 +68,20 @@ class Memory(nn.Module):
       hidden['read_weights'] = hidden['read_weights'].clone()
       hidden['write_weights'] = hidden['write_weights'].clone()
       hidden['usage_vector'] = hidden['usage_vector'].clone()
+      hidden['backward_mode'] =  hidden['backward_mode'].clone()
+      hidden['content_mode'] = hidden['content_mode'].clone()
+      hidden['forward_mode'] = hidden['forward_mode'].clone()
+      hidden['read_modes'] = hidden['read_modes'].clone()
 
       if erase:
         hidden['memory'].data.fill_(0)
         hidden['link_matrix'].data.zero_()
         hidden['precedence'].data.zero_()
         hidden['read_weights'].data.fill_(0)
+        hidden['forward_mode'].data.fill_(0)
+        hidden['content_mode'].data.fill_(0)
+        hidden['backward_mode'].data.fill_(0)
+        hidden['read_modes'].data.fill_(0)
         hidden['write_weights'].data.fill_(0)
         hidden['usage_vector'].data.zero_()
     return hidden
@@ -186,7 +197,7 @@ class Memory(nn.Module):
     backward_mode = T.sum(read_modes[:, :, 0:1].contiguous().unsqueeze(3) * backward_weight, 2)
     forward_mode = T.sum(read_modes[:, :, 1:2].contiguous().unsqueeze(3) * forward_weight, 2)
 
-    return backward_mode + content_mode + forward_mode
+    return backward_mode + content_mode + forward_mode, (backward_mode, content_mode, forward_mode)
 
   def read_vectors(self, memory, read_weights):
     return T.bmm(read_weights, memory)
@@ -194,13 +205,20 @@ class Memory(nn.Module):
   def read(self, read_keys, read_strengths, read_modes, hidden):
     content_weights = self.content_weightings(hidden['memory'], read_keys, read_strengths)
 
-    hidden['read_weights'] = self.read_weightings(
+    hidden['read_weights'], modes_w = self.read_weightings(
         hidden['memory'],
         content_weights,
         hidden['link_matrix'],
         read_modes,
         hidden['read_weights']
     )
+
+    # Save also which operations was used
+    hidden['backward_mode'] = modes_w[0]
+    hidden['content_mode'] = modes_w[1]
+    hidden['forward_mode'] = modes_w[2]
+    hidden['read_modes'] = read_modes
+
     read_vectors = self.read_vectors(hidden['memory'], hidden['read_weights'])
     return read_vectors, hidden
 
