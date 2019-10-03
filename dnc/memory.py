@@ -37,8 +37,9 @@ class Memory(nn.Module):
       self.allocation_gate_transform = nn.Linear(self.input_size, 1)
       self.write_gate_transform = nn.Linear(self.input_size, 1)
       self.read_modes_transform = nn.Linear(self.input_size, 3 * r)
+      self.copy_mode_transform = nn.Linear(self.input_size, 1)
     else:
-      self.interface_size = (w * r) + (3 * w) + (5 * r) + 3
+      self.interface_size = (w * r) + (3 * w) + (5 * r) + 3 + 1 #last 1 is for the copy
       self.interface_weights = nn.Linear(self.input_size, self.interface_size)
 
     self.I = cuda(1 - T.eye(m).unsqueeze(0), gpu_id=self.gpu_id)  # (1 * n * n)
@@ -135,7 +136,7 @@ class Memory(nn.Module):
   def update_precedence(self, precedence, write_weights):
     return (1 - T.sum(write_weights, 2, keepdim=True)) * precedence + write_weights
 
-  def write(self, write_key, write_vector, erase_vector, free_gates, read_strengths, write_strength, write_gate, allocation_gate, hidden):
+  def write(self, write_key, write_vector, erase_vector, free_gates, read_strengths, write_strength, write_gate, allocation_gate, hidden, previous_read_values, copy_weight):
     # get current usage
     hidden['usage_vector'] = self.get_usage_vector(
         hidden['usage_vector'],
@@ -164,11 +165,15 @@ class Memory(nn.Module):
 
     weighted_resets = hidden['write_weights'].unsqueeze(3) * erase_vector.unsqueeze(2)
     reset_gate = T.prod(1 - weighted_resets, 1)
-    # Update memory
+
+    # Clean the memory by using the reset_gate
     hidden['memory'] = hidden['memory'] * reset_gate
 
+    # Update the memory with the new value (taken from the controller
+    # or from the previous read values)
     hidden['memory'] = hidden['memory'] + \
-        T.bmm(hidden['write_weights'].transpose(1, 2), write_vector)
+        T.bmm(hidden['write_weights'].transpose(1, 2),
+            write_vector*(1-copy_weight)+previous_read_values*copy_weight)
 
     # update link_matrix
     hidden['link_matrix'] = self.get_link_matrix(
@@ -223,7 +228,7 @@ class Memory(nn.Module):
     read_vectors = self.read_vectors(hidden['memory'], hidden['read_weights'])
     return read_vectors, hidden
 
-  def forward(self, ξ, hidden):
+  def forward(self, ξ, hidden, previous_read_values=None):
 
     # ξ = ξ.detach()
     m = self.mem_size
@@ -252,6 +257,8 @@ class Memory(nn.Module):
       write_gate = T.sigmoid(self.write_gate_transform(ξ).view(b, 1))
       # read modes (b * r * 3)
       read_modes = σ(self.read_modes_transform(ξ).view(b, r, 3), -1)
+      # copy mode
+      copy_mode = T.sigmoid(self.copy_mode_transform(ξ).view(b,1))
     else:
       ξ = self.interface_weights(ξ)
       # r read keys (b * w * r)
@@ -274,7 +281,9 @@ class Memory(nn.Module):
       write_gate = T.sigmoid(ξ[:, r * w + 2 * r + 3 * w + 2].contiguous()).unsqueeze(1).view(b, 1)
       # read modes (b * 3*r)
       read_modes = σ(ξ[:, r * w + 2 * r + 3 * w + 3: r * w + 5 * r + 3 * w + 3].contiguous().view(b, r, 3), -1)
+      # copy mode (b*1)
+      copy_mode =  T.sigmoid(ξ[:, (w * r) + (3 * w) + (5 * r) + 3].contiguous()).unsqueeze(1).view(b, 1)
 
     hidden = self.write(write_key, write_vector, erase_vector, free_gates,
-                        read_strengths, write_strength, write_gate, allocation_gate, hidden)
+                        read_strengths, write_strength, write_gate, allocation_gate, hidden, previous_read_values, copy_mode)
     return self.read(read_keys, read_strengths, read_modes, hidden)

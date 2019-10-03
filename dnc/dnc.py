@@ -184,7 +184,7 @@ class DNC(nn.Module):
     debug_obj['read_modes'].append(mhx['read_modes'][0].data.cpu().numpy())
     return debug_obj
 
-  def _layer_forward(self, input, layer, hx=(None, None), pass_through_memory=True):
+  def _layer_forward(self, input, layer, hx=(None, None), pass_through_memory=True, previous_read_values=None):
     (chx, mhx) = hx
 
     # pass through the controller layer
@@ -203,9 +203,9 @@ class DNC(nn.Module):
     # pass through memory
     if pass_through_memory:
       if self.share_memory:
-        read_vecs, mhx = self.memories[0](ξ, mhx)
+        read_vecs, mhx = self.memories[0](ξ, mhx, previous_read_values[:, :self.w])
       else:
-        read_vecs, mhx = self.memories[layer](ξ, mhx)
+        read_vecs, mhx = self.memories[layer](ξ, mhx, previous_read_values[:, :self.w])
       # the read vectors
       read_vectors = read_vecs.view(-1, self.w * self.r)
     else:
@@ -249,8 +249,12 @@ class DNC(nn.Module):
         chx = controller_hidden[layer]
         m = mem_hidden if self.share_memory else mem_hidden[layer]
         # pass through controller
-        outs[time], (chx, m, read_vectors) = \
-          self._layer_forward(inputs[time], layer, (chx, m), pass_through_memory)
+        if read_vectors is not None:
+            outs[time], (chx, m, read_vectors) = \
+                self._layer_forward(inputs[time], layer, (chx, m), pass_through_memory, read_vectors)
+        else:
+            outs[time], (chx, m, read_vectors) = \
+                self._layer_forward(inputs[time], layer, (chx, m), pass_through_memory, last_read)
 
         # debug memory
         if self.debug:
