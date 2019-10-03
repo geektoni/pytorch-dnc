@@ -59,6 +59,7 @@ class Memory(nn.Module):
           'usage_vector': cuda(T.zeros(b, m), gpu_id=self.gpu_id),
           'forward_mode': cuda(T.zeros(b, r, m).fill_(0), gpu_id=self.gpu_id),
           'content_mode': cuda(T.zeros(b, r, m).fill_(0), gpu_id=self.gpu_id),
+          'backward_mode': cuda(T.zeros(b, r, m).fill_(0), gpu_id=self.gpu_id),
           'read_modes': cuda(T.zeros(b, r, m).fill_(0), gpu_id=self.gpu_id)
       }
     else:
