@@ -39,7 +39,8 @@ class DNC(nn.Module):
       independent_linears=False,
       share_memory=True,
       debug=False,
-      clip=20
+      clip=20,
+      copy_mode=False
   ):
     super(DNC, self).__init__()
     # todo: separate weights and RNNs for the interface and output vectors
@@ -62,6 +63,7 @@ class DNC(nn.Module):
     self.share_memory = share_memory
     self.debug = debug
     self.clip = clip
+    self.copy_mode = copy_mode
 
     self.w = self.cell_size
     self.r = self.read_heads
@@ -98,7 +100,8 @@ class DNC(nn.Module):
                 cell_size=self.w,
                 read_heads=self.r,
                 gpu_id=self.gpu_id,
-                independent_linears=self.independent_linears
+                independent_linears=self.independent_linears,
+                copy_mode=self.copy_mode
             )
         )
         setattr(self, 'rnn_layer_memory_' + str(layer), self.memories[layer])
@@ -112,7 +115,8 @@ class DNC(nn.Module):
               cell_size=self.w,
               read_heads=self.r,
               gpu_id=self.gpu_id,
-              independent_linears=self.independent_linears
+              independent_linears=self.independent_linears,
+              copy_mode=self.copy_mode
           )
       )
       setattr(self, 'rnn_layer_memory_shared', self.memories[0])

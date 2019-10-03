@@ -12,7 +12,7 @@ from .util import *
 
 class Memory(nn.Module):
 
-  def __init__(self, input_size, mem_size=512, cell_size=32, read_heads=4, gpu_id=-1, independent_linears=True):
+  def __init__(self, input_size, mem_size=512, cell_size=32, read_heads=4, gpu_id=-1, independent_linears=True, copy_mode=False):
     super(Memory, self).__init__()
 
     self.mem_size = mem_size
@@ -258,7 +258,7 @@ class Memory(nn.Module):
       # read modes (b * r * 3)
       read_modes = σ(self.read_modes_transform(ξ).view(b, r, 3), -1)
       # copy mode
-      copy_mode = T.sigmoid(self.copy_mode_transform(ξ).view(b,1))
+      copy_weight = T.sigmoid(self.copy_mode_transform(ξ).view(b,1))
     else:
       ξ = self.interface_weights(ξ)
       # r read keys (b * w * r)
@@ -282,8 +282,12 @@ class Memory(nn.Module):
       # read modes (b * 3*r)
       read_modes = σ(ξ[:, r * w + 2 * r + 3 * w + 3: r * w + 5 * r + 3 * w + 3].contiguous().view(b, r, 3), -1)
       # copy mode (b*1)
-      copy_mode =  T.sigmoid(ξ[:, (w * r) + (3 * w) + (5 * r) + 3].contiguous()).unsqueeze(1).view(b, 1)
+      copy_weight =  T.sigmoid(ξ[:, (w * r) + (3 * w) + (5 * r) + 3].contiguous()).unsqueeze(1).view(b, 1)
+
+    # If we are not using the copy mode then the value is 0
+    if not self.copy_mode:
+        copy_weight = 0.0
 
     hidden = self.write(write_key, write_vector, erase_vector, free_gates,
-                        read_strengths, write_strength, write_gate, allocation_gate, hidden, previous_read_values, copy_mode)
+                        read_strengths, write_strength, write_gate, allocation_gate, hidden, previous_read_values, copy_weight)
     return self.read(read_keys, read_strengths, read_modes, hidden)
