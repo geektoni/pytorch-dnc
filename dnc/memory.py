@@ -21,6 +21,7 @@ class Memory(nn.Module):
     self.gpu_id = gpu_id
     self.input_size = input_size
     self.independent_linears = independent_linears
+    self.copy_mode = copy_mode
 
     m = self.mem_size
     w = self.cell_size
