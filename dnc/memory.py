@@ -283,7 +283,7 @@ class Memory(nn.Module):
       # read modes (b * 3*r)
       read_modes = σ(ξ[:, r * w + 2 * r + 3 * w + 3: r * w + 5 * r + 3 * w + 3].contiguous().view(b, r, 3), -1)
       # copy mode (b*1)
-      copy_weight =  T.sigmoid(ξ[:, (w * r) + (3 * w) + (5 * r) + 3].contiguous()).unsqueeze(1).view(b, 1)
+      copy_weight =  T.sigmoid(ξ[:, (w * r) + (3 * w) + (5 * r) + 3].contiguous()).unsqueeze(1).view(b, 1)[:, None, :]
 
     # If we are not using the copy mode then the value is 0
     if not self.copy_mode:

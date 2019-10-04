@@ -207,9 +207,9 @@ class DNC(nn.Module):
     # pass through memory
     if pass_through_memory:
       if self.share_memory:
-        read_vecs, mhx = self.memories[0](ξ, mhx, previous_read_values[:, :self.w])
+        read_vecs, mhx = self.memories[0](ξ, mhx, previous_read_values[:, :, :self.w])
       else:
-        read_vecs, mhx = self.memories[layer](ξ, mhx, previous_read_values[:, :self.w])
+        read_vecs, mhx = self.memories[layer](ξ, mhx, previous_read_values[:, :, :self.w])
       # the read vectors
       read_vectors = read_vecs.view(-1, self.w * self.r)
     else:
@@ -255,10 +255,10 @@ class DNC(nn.Module):
         # pass through controller
         if read_vectors is not None:
             outs[time], (chx, m, read_vectors) = \
-                self._layer_forward(inputs[time], layer, (chx, m), pass_through_memory, read_vectors)
+                self._layer_forward(inputs[time], layer, (chx, m), pass_through_memory, read_vectors[:, None, :])
         else:
             outs[time], (chx, m, read_vectors) = \
-                self._layer_forward(inputs[time], layer, (chx, m), pass_through_memory, last_read)
+                self._layer_forward(inputs[time], layer, (chx, m), pass_through_memory, last_read[:, None, :])
 
         # debug memory
         if self.debug:
