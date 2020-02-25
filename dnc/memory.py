@@ -40,8 +40,11 @@ class Memory(nn.Module):
       self.read_modes_transform = nn.Linear(self.input_size, 3 * r)
       self.copy_mode_transform = nn.Linear(self.input_size, 1)
     else:
-      self.interface_size = (w * r) + (3 * w) + (5 * r) + 3 + 1 #last 1 is for the copy
-      self.interface_weights = nn.Linear(self.input_size, self.interface_size)
+        if self.copy_mode:
+            self.interface_size = (w * r) + (3 * w) + (5 * r) + 3 + 1 #last 1 is for the copy
+        else:
+            self.interface_size = (w * r) + (3 * w) + (5 * r) + 3
+        self.interface_weights = nn.Linear(self.input_size, self.interface_size)
 
     self.I = cuda(1 - T.eye(m).unsqueeze(0), gpu_id=self.gpu_id)  # (1 * n * n)
 
@@ -283,7 +286,8 @@ class Memory(nn.Module):
       # read modes (b * 3*r)
       read_modes = σ(ξ[:, r * w + 2 * r + 3 * w + 3: r * w + 5 * r + 3 * w + 3].contiguous().view(b, r, 3), -1)
       # copy mode (b*1)
-      copy_weight =  T.sigmoid(ξ[:, (w * r) + (3 * w) + (5 * r) + 3].contiguous()).unsqueeze(1).view(b, 1)[:, None, :]
+      if self.copy_mode:
+        copy_weight =  T.sigmoid(ξ[:, (w * r) + (3 * w) + (5 * r) + 3].contiguous()).unsqueeze(1).view(b, 1)[:, None, :]
 
     # If we are not using the copy mode then the value is 0
     if not self.copy_mode:
